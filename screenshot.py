@@ -12,6 +12,10 @@ from datetime import datetime
 from pathlib import Path
 
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+try:
+    from playwright_stealth import stealth_async
+except ImportError:
+    stealth_async = None
 
 # ── 設定 ──────────────────────────────────────────────────────────────────────
 
@@ -338,6 +342,12 @@ async def process_market(page, market_id: str, market_name: str, url: str, outpu
         except Exception as e:
             logger.error(f"截圖失敗：{e}")
             if status_callback: status_callback(f"❌ {market_name} ({period_text}) 截圖失敗")
+            try:
+                err_path = output_dir / f"error_{filename}.png"
+                await page.screenshot(path=err_path, full_page=True)
+                generated_files.append(err_path)
+            except:
+                pass
 
     logger.info(f"{market_name} 截圖完成")
     return generated_files
@@ -370,6 +380,8 @@ async def run_screenshots(selected_markets, selected_periods, output_dir: Path, 
             locale="zh-TW",
         )
         page = await context.new_page()
+        if stealth_async:
+            await stealth_async(page)
         page.set_default_timeout(PAGE_TIMEOUT)
 
         for market_id, market_name, url in selected_markets:
