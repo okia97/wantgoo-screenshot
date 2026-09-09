@@ -2,3 +2,4 @@ playwright>=1.44.0
 Pillow>=10.0.0
 streamlit>=1.36.0
 playwright-stealth>=1.0.6
+xvfbwrapper>=0.2.9

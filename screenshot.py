@@ -359,37 +359,52 @@ async def run_screenshots(selected_markets, selected_periods, output_dir: Path, 
     logger.info(f"=== 開始執行國際指數截圖任務 ===")
     logger.info(f"輸出目錄：{output_dir}")
 
+    vdisplay = None
+    if sys.platform.startswith("linux"):
+        try:
+            from xvfbwrapper import Xvfb
+            vdisplay = Xvfb(width=1440, height=900)
+            vdisplay.start()
+            logger.info("啟動虛擬顯示器 Xvfb")
+        except Exception as e:
+            logger.warning(f"Xvfb 啟動失敗：{e}")
+
     all_generated_files = []
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-            ],
-        )
-        context = await browser.new_context(
-            viewport={"width": 1440, "height": 900},
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/125.0.0.0 Safari/537.36"
-            ),
-            locale="zh-TW",
-        )
-        page = await context.new_page()
-        if stealth_async:
-            await stealth_async(page)
-        page.set_default_timeout(PAGE_TIMEOUT)
+    try:
+        async with async_playwright() as p:
+            is_linux = sys.platform.startswith("linux")
+            browser = await p.chromium.launch(
+                headless=not is_linux,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
+            context = await browser.new_context(
+                viewport={"width": 1440, "height": 900},
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                ),
+                locale="zh-TW",
+            )
+            page = await context.new_page()
+            if stealth_async:
+                await stealth_async(page)
+            page.set_default_timeout(PAGE_TIMEOUT)
 
-        for market_id, market_name, url in selected_markets:
-            files = await process_market(page, market_id, market_name, url, output_dir, selected_periods, status_callback)
-            if files:
-                all_generated_files.extend(files)
+            for market_id, market_name, url in selected_markets:
+                files = await process_market(page, market_id, market_name, url, output_dir, selected_periods, status_callback)
+                if files:
+                    all_generated_files.extend(files)
 
-        await browser.close()
+            await browser.close()
+    finally:
+        if vdisplay:
+            vdisplay.stop()
 
     logger.info("\n=== 所有截圖任務完成 ===")
     logger.info(f"檔案位置：{output_dir}")
