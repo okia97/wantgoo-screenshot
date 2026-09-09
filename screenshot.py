@@ -239,7 +239,11 @@ async def process_market(page, market_id: str, market_name: str, url: str, outpu
         return []
 
     logger.info(f"等待頁面初始渲染（{INITIAL_WAIT} 秒）...")
-    await asyncio.sleep(INITIAL_WAIT)
+    import random
+    for _ in range(3):
+        await page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+        await asyncio.sleep(1)
+    await asyncio.sleep(INITIAL_WAIT - 3)
 
     try:
         await page.wait_for_selector(CHART_CONTAINER_SELECTOR, timeout=10_000)
@@ -374,26 +378,18 @@ async def run_screenshots(selected_markets, selected_periods, output_dir: Path, 
     try:
         async with async_playwright() as p:
             is_linux = sys.platform.startswith("linux")
-            browser = await p.chromium.launch(
+            browser = await p.firefox.launch(
                 headless=not is_linux,
                 args=[
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
-                    "--disable-blink-features=AutomationControlled",
                 ],
             )
             context = await browser.new_context(
                 viewport={"width": 1440, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/125.0.0.0 Safari/537.36"
-                ),
                 locale="zh-TW",
             )
             page = await context.new_page()
-            if stealth_async:
-                await stealth_async(page)
             page.set_default_timeout(PAGE_TIMEOUT)
 
             for market_id, market_name, url in selected_markets:
