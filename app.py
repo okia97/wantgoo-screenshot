@@ -6,6 +6,9 @@ import zipfile
 import os
 import io
 
+# 確保在 Streamlit Cloud 環境中自動安裝 Playwright 瀏覽器引擎
+os.system("playwright install chromium")
+
 from screenshot import MARKET_GROUPS, PERIODS, run_screenshots
 
 st.set_page_config(page_title="玩股網自動截圖", page_icon="📈", layout="wide")
